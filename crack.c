@@ -1,17 +1,21 @@
 // Christopher Lucas
 
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <unistd.h>
 #include <crypt.h>
 #include <string.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <pthread.h>
 
 char salt[2];
 char* target;
+char start;
+char end;
 
-bool checker(const char* guess, const char* salt, const char* correct) {
-	char* hash = crypt(guess, salt);
+bool checker(const char* guess, const char* salt, const char* correct, struct crypt_data* data) {
+	char* hash = crypt_r(guess, salt, data);
 	if (hash == NULL) {
 		printf("error with crypt\n");
 		exit(-1);
@@ -27,9 +31,9 @@ void usage() {
 	exit(-1);
 }
 
-char* crackHelper(char* guess, const int currIdx, const int length, const char start, const char end) {
+char* crackHelper(char* guess, const int currIdx, const int length, struct crypt_data* data) {
 	if (currIdx == length) {
-		if (checker(guess, salt, target)) {
+		if (checker(guess, salt, target, data)) {
 			return guess;
 		} else {
 			return NULL;
@@ -38,23 +42,34 @@ char* crackHelper(char* guess, const int currIdx, const int length, const char s
 
 	for (char c = start; c <= end; c++) {
 		guess[currIdx] = c;
-		char* result = crackHelper(guess, currIdx + 1, length, start, end);
+		char* result = crackHelper(guess, currIdx + 1, length, data);
 		if (result != NULL) {
 			return result;
-		}
-		if (currIdx == 0) {
-			printf("%d-%c\n", length, c);
 		}
 	}
 	return NULL;
 }
 
-char* crack(const int length, const char start, const char end) {
-	char* guess = (char*) malloc(length + 1);
-	guess[length] = '\0';
-	return crackHelper(guess, 0, length, start, end);
-}
+struct crack_args {
+	char firstChar;
+	int length;
+};
 
+
+void* crack (void* args) {
+	struct crack_args* my_args = (struct crack_args*) args;
+
+	struct crypt_data data;
+	data.initialized = 0;
+
+	char guess[my_args->length];
+	guess[0] = my_args->firstChar;
+	char* result = crackHelper(guess, 1, my_args->length, &data);
+	if (result != NULL) {
+		printf("%s\n", result);
+		exit(0);
+	}
+}
 
 int main(int argc, char** argv) {
 
@@ -64,8 +79,8 @@ int main(int argc, char** argv) {
 	target = argv[3];
 	strncpy(salt, target, 2);
 
-	char start = 'a';
-	char end = 'z';
+	start = 'a';
+	end = 'z';
 
 	if (argc == 5) {
 		long int expanded = strtol(argv[4], NULL, 10);
@@ -75,23 +90,40 @@ int main(int argc, char** argv) {
 		}
 	}
 
-	//int threadResponsibility[threads];
-	//for (int i = 0; i < threads, i++) {
-	//	threadResponsibility[i] = keysize/threads;
-	//}
-	//for (int i = 0; i < keysize % threads; i++) {
-	//	threadResponsibility[i] = threadResponsibility[i] + 1;
-	//}
-	
 	for (int length = 1; length <= keysize; length++) {
-		char* result = crack(length, start, end);
-		if (result) {
-			printf("%s\n", result);
-			break;
+
+		char c = start;
+		while (c <= end) {
+
+			pthread_t id[threads];
+
+			for (int i = 0; i < threads; i++, c++) {
+				if (c <= end) {
+					struct crack_args args;
+					args.firstChar = c;
+					printf("%d %c\n", length, c);
+					args.length = length;
+					if (pthread_create(&id[i], NULL, crack, (void*) &args)) {
+						printf("Error in Create\n");
+						exit(-1);
+					}
+				} else {
+					id[i] = -1;
+				}
+			}
+
+			
+
+			for (int i = 0; i < threads; i++) {
+				if (id[i] != -1) {
+					if (pthread_join(id[i], NULL)) {
+						printf("Error in Join\n");
+						exit(-1);
+					}
+				}
+			}
 		}
 	}
 
 	return 0;
 }
-
-
