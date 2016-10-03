@@ -33,7 +33,10 @@ void usage() {
 
 char* crackHelper(char* guess, const int currIdx, const int length, struct crypt_data* data) {
 	if (currIdx == length) {
-		if (checker(guess, salt, target, data)) {
+
+		bool same = checker(guess, salt, target, data);
+
+		if (same) {
 			return guess;
 		} else {
 			return NULL;
@@ -90,23 +93,26 @@ int main(int argc, char** argv) {
 		}
 	}
 
+	pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
 	for (int length = 1; length <= keysize; length++) {
 
 		char c = start;
 		while (c <= end) {
 
 			pthread_t id[threads];
+			struct crack_args args[threads];
 
-			for (int i = 0; i < threads; i++, c++) {
+			for (int i = 0; i < threads; i++ , c++) {
 				if (c <= end) {
-					struct crack_args args;
-					args.firstChar = c;
-					printf("%d %c\n", length, c);
-					args.length = length;
-					if (pthread_create(&id[i], NULL, crack, (void*) &args)) {
+					args[i].firstChar = c;
+					args[i].length = length;
+
+					if (pthread_create(&id[i], NULL, crack, (void*) &args[i])) {
 						printf("Error in Create\n");
 						exit(-1);
 					}
+					printf("Starting: %d %c %d\n", length, c, id[i]);
 				} else {
 					id[i] = -1;
 				}
@@ -116,6 +122,7 @@ int main(int argc, char** argv) {
 
 			for (int i = 0; i < threads; i++) {
 				if (id[i] != -1) {
+					printf("Joining: %d\n", id[i]);
 					if (pthread_join(id[i], NULL)) {
 						printf("Error in Join\n");
 						exit(-1);
