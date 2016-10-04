@@ -76,9 +76,22 @@ void* crack (void* args) {
 
 int main(int argc, char** argv) {
 
+	char* temp;
+
 	if (argc < 4 || 5 < argc) { usage(); }
-	long int threads = strtol(argv[1], NULL, 10);
-	long int keysize = strtol(argv[2], NULL, 10);
+
+	long int threads = strtol(argv[1], &temp, 10);
+	if (*temp != '\0') { 
+		printf("Error parsing threads\n");
+		exit(-1);
+	}
+
+	long int keysize = strtol(argv[2], &temp, 10);
+	if (*temp != '\0') { 
+		printf("Error parsing keysize\n");
+		exit(-1);
+	}
+
 	target = argv[3];
 	strncpy(salt, target, 2);
 
@@ -86,25 +99,31 @@ int main(int argc, char** argv) {
 	end = 'z';
 
 	if (argc == 5) {
-		long int expanded = strtol(argv[4], NULL, 10);
+		long int expanded = strtol(argv[4], &temp, 10);
+		if (*temp != '\0') { 
+			printf("Error parsing expanded\n");
+			exit(-1);
+		}
+
 		if (expanded) {
 			start = ' ';
 			end = '~';
 		}
 	}
 
-	pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-
 	for (int length = 1; length <= keysize; length++) {
 
 		char c = start;
-		while (c <= end) {
+		// have to check >= start due to overflow of char type in expanded case
+		while (c <= end && c >= start) {
 
 			pthread_t id[threads];
 			struct crack_args args[threads];
+			bool started[threads];
 
 			for (int i = 0; i < threads; i++ , c++) {
-				if (c <= end) {
+				started[i] = 0;
+				if (c <= end && c >= start) {
 					args[i].firstChar = c;
 					args[i].length = length;
 
@@ -112,17 +131,15 @@ int main(int argc, char** argv) {
 						printf("Error in Create\n");
 						exit(-1);
 					}
-					printf("Starting: %d %c %d\n", length, c, id[i]);
-				} else {
-					id[i] = -1;
-				}
+
+					printf("Starting length %d starting with %c\n", length, c);
+					started[i] = 1;
+				} 
 			}
 
-			
-
+			// join all started ids
 			for (int i = 0; i < threads; i++) {
-				if (id[i] != -1) {
-					printf("Joining: %d\n", id[i]);
+				if (started[i]) {
 					if (pthread_join(id[i], NULL)) {
 						printf("Error in Join\n");
 						exit(-1);

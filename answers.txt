@@ -1,0 +1,56 @@
+1. Christopher Lucs
+2. pass
+3. ferry
+
+4. & 5. 
+threads	time
+1	49.812
+2	26.568
+4	16.405
+6	11.163
+8	8.723
+10	6.984
+12	6.981
+
+6.
+threads	time	speedup
+1	49.812	1
+2	26.568	1.8748870822
+4	16.405	3.0363913441
+6	11.163	4.462241333
+8	8.723	5.7104207268
+10	6.984	7.1323024055
+12	6.981	7.1353674259
+
+7.
+8. The speedup is sublinear. Also, the program was written to partition the keysapce by the first character. So, in the case of 26 unique first characters, the 10 and 12 thread tests should complete in about the same time, which is found to be true.
+
+9. 
+keysize	time
+1	0.01
+2	0.018
+3	0.095
+4	2.291
+5	49.812
+
+6 	1176
+7	28224
+8	677376
+
+10. none
+
+11. all exercises
+
+abA.g8pU2Iffo -> salts
+cdfnIXMyMCpPg -> salts
+efgC/gw8PDKhs -> salts
+ghLneTdBMxJP. -> salts
+ijSsXTgIC7QRU -> salts
+klr7dT7cAODsk -> donot	
+mn4iWfK0m76t6 -> skipp
+opjPsgpXaahxM -> anyyy
+qr6ncfvfqecME -> salts
+
+this example shows how salts are useful. For the six passwords that were "salts" hashed with a different salt, the cyphertext was unique. Thus, if the salts are randomized, there is a probalistically low chance of the same password being hashed to the same cyphertext. Then, if the cyphertexts are stolen, each has to be broken independently.
+
+The fourth paramater is interpreted as a boolean. If true, the expanded character set is used, else the behavior is normal.
